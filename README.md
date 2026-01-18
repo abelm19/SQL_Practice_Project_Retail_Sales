@@ -3,10 +3,10 @@
 ## Project Overview
 
 **Project Title**: Retail Sales Analysis  
-**Level**: Beginner  
-**Database**: `p1_retail_db`
+**Level**: Starter Project Practical  
+**Database**: `practice_project`
 
-This project is designed to demonstrate SQL skills and techniques typically used by data analysts to explore, clean, and analyze retail sales data. The project involves setting up a retail sales database, performing exploratory data analysis (EDA), and answering specific business questions through SQL queries. This project is ideal for those who are starting their journey in data analysis and want to build a solid foundation in SQL.
+Built a strong foundation in SQL by performing data cleaning, exploratory analysis, and basic business insights on retail sales data.
 
 ## Objectives
 
@@ -23,7 +23,10 @@ This project is designed to demonstrate SQL skills and techniques typically used
 - **Table Creation**: A table named `retail_sales` is created to store the sales data. The table structure includes columns for transaction ID, sale date, sale time, customer ID, gender, age, product category, quantity sold, price per unit, cost of goods sold (COGS), and total sale amount.
 
 ```sql
-CREATE DATABASE p1_retail_db;
+-- creating the practice project practical database
+drop database if exists `practice_project`;
+create database `practice_project`;
+use `practice_project`;
 
 CREATE TABLE retail_sales
 (
@@ -47,85 +50,149 @@ CREATE TABLE retail_sales
 - **Customer Count**: Find out how many unique customers are in the dataset.
 - **Category Count**: Identify all unique product categories in the dataset.
 - **Null Value Check**: Check for any null values in the dataset and delete records with missing data.
+- **Duplicate Check**: Check for any duplicated values in the dataset.
+- **Data Consistency Checks**: Checking for any errors or bad data within columns.
 
 ```sql
-SELECT COUNT(*) FROM retail_sales;
-SELECT COUNT(DISTINCT customer_id) FROM retail_sales;
-SELECT DISTINCT category FROM retail_sales;
+-- Look at the whole table
+select *
+from retail_sales;
 
-SELECT * FROM retail_sales
-WHERE 
-    sale_date IS NULL OR sale_time IS NULL OR customer_id IS NULL OR 
-    gender IS NULL OR age IS NULL OR category IS NULL OR 
-    quantity IS NULL OR price_per_unit IS NULL OR cogs IS NULL;
+-- Let us see the number of total orders or transactions
+select count(*)
+from retail_sales;
 
-DELETE FROM retail_sales
-WHERE 
-    sale_date IS NULL OR sale_time IS NULL OR customer_id IS NULL OR 
-    gender IS NULL OR age IS NULL OR category IS NULL OR 
-    quantity IS NULL OR price_per_unit IS NULL OR cogs IS NULL;
+-- checking for duplicates
+select transactions_id, count(*)
+from retail_sales
+group by transactions_id
+having count(*) > 1;
+
+-- count categories
+select count(distinct category)
+from retail_sales;
+
+-- seeing the number of unique customers in the table
+select count(distinct customer_id) as no_of_customers
+from retail_sales;
+
+-- checking for null values
+select *
+from retail_sales
+where transactions_id is null or sale_date is null or sale_time is null	
+or customer_id is null	or gender is null	or age is null	or category	is null
+or quantiy is null	or price_per_unit is null	or cogs is null	or total_sale is null;
+
+-- deleting null values
+delete
+from retail_sales
+where transactions_id is null or sale_date is null or sale_time is null	
+or customer_id is null	or gender is null	or age is null	or category	is null
+or quantiy is null	or price_per_unit is null	or cogs is null	or total_sale is null;
+
+-- data consistency, legal age bounds
+select min(age) as min_age, max(age) as max_age
+from retail_sales;
+
+-- data consistency check on category making sure there is no errors on this column
+-- or that categories makes sense
+select distinct category
+from retail_sales;
+
+-- data consistency, quantity should not be <= 0
+select distinct quantiy
+from retail_sales;
+
+-- date consistency check
+select min(sale_date), max(sale_date)
+from retail_sales;
+
+-- time consistency check
+select min(sale_time), max(sale_time)
+from retail_sales;
+
+-- checking the price ranges per unit shouldn't be negative or 0
+select min(price_per_unit), max(price_per_unit)
+from retail_sales;
+-- checking the cost of goods, this also shouldn't be negative or 0
+select min(cogs), max(cogs)
+from retail_sales;
+-- checking the total_sale, this also shouldn't be negative or 0
+select min(total_sale), max(total_sale)
+from retail_sales;
+
+-- check gender column for consistency and errors or formats
+select distinct gender
+from retail_sales;
+
+-- checking correct total_sale value which should be quantity multiplied by the price of the unit
+select *
+from retail_sales
+where total_sale <> quantiy * price_per_unit;
+
 ```
 
 ### 3. Data Analysis & Findings
 
 The following SQL queries were developed to answer specific business questions:
 
-1. **Write a SQL query to retrieve all columns for sales made on '2022-11-05**:
+1. **Checking transactions which had loss(where cost of goods was greater than total_sales)**:
 ```sql
-SELECT *
-FROM retail_sales
-WHERE sale_date = '2022-11-05';
+-- Exploring the data
+-- checking any loss because the cost is higher than total_sale made
+select * 
+from retail_sales
+where cogs > total_sale;
+-- In such situations, perhaps increasing the price per unit would be appropriate to avoid loss
 ```
 
-2. **Write a SQL query to retrieve all transactions where the category is 'Clothing' and the quantity sold is more than 4 in the month of Nov-2022**:
+2. **Total cost of goods and total sales over all transactions**:
 ```sql
-SELECT 
-  *
-FROM retail_sales
-WHERE 
-    category = 'Clothing'
-    AND 
-    TO_CHAR(sale_date, 'YYYY-MM') = '2022-11'
-    AND
-    quantity >= 4
+-- seeing the total cost of goods and total sales over all transactions
+select sum(cogs) as total_cogs, sum(total_sale) as total_sales
+from retail_sales;
 ```
 
-3. **Write a SQL query to calculate the total sales (total_sale) for each category.**:
+3. **Adding Profit column and calculating profit over all transactions**:
 ```sql
-SELECT 
-    category,
-    SUM(total_sale) as net_sale,
-    COUNT(*) as total_orders
-FROM retail_sales
-GROUP BY 1
+-- adding profit column for enhanced exploration of the data and create insights
+create view retail_sales_profit_included as
+select * , round((total_sale - cogs),2) as profit
+from retail_sales;
+
+-- total profit from all transactions combined
+select round(sum(profit), 2) as total_profit
+from retail_sales_profit_included;
 ```
 
-4. **Write a SQL query to find the average age of customers who purchased items from the 'Beauty' category.**:
+4. **Which category had the most profit and sales?**:
 ```sql
-SELECT
-    ROUND(AVG(age), 2) as avg_age
-FROM retail_sales
-WHERE category = 'Beauty'
+-- To see which category had most profit and sales. 
+select category, sum(total_sale) as t_s, round(sum(profit), 2) p
+from retail_sales_profit_included
+group by category
+order by p desc;
+-- The clothing category had most profit and sales compared to beauty or electronics. 
 ```
 
-5. **Write a SQL query to find all transactions where the total_sale is greater than 1000.**:
+5. **Total Sales, Profit and number of orders per sale dates.**:
 ```sql
-SELECT * FROM retail_sales
-WHERE total_sale > 1000
+-- sales by date
+select sale_date, sum(total_sale), sum(profit), count(*) as no_of_orders
+from retail_sales_profit_included
+group by sale_date
+order by sale_date;
 ```
 
-6. **Write a SQL query to find the total number of transactions (transaction_id) made by each gender in each category.**:
+6. **Which dates made most sales?**:
 ```sql
-SELECT 
-    category,
-    gender,
-    COUNT(*) as total_trans
-FROM retail_sales
-GROUP 
-    BY 
-    category,
-    gender
-ORDER BY 1
+-- which dates made most sales(useful for promotions or analyzing highest buying activity
+-- Tends to be Q4 due to the major holidays.
+select sale_date, sum(total_sale) t_s, sum(profit) as t_p
+from retail_sales_profit_included
+group by sale_date
+order by t_p desc, t_s desc
+limit 5;
 ```
 
 7. **Write a SQL query to calculate the average sale for each month. Find out best selling month in each year**:
@@ -147,81 +214,57 @@ GROUP BY 1, 2
 WHERE rank = 1
 ```
 
-8. **Write a SQL query to find the top 5 customers based on the highest total sales **:
+8. **Which customers made highest total orders? **:
 ```sql
-SELECT 
-    customer_id,
-    SUM(total_sale) as total_sales
-FROM retail_sales
-GROUP BY 1
-ORDER BY 2 DESC
-LIMIT 5
+-- which customers made consistent orders
+select customer_id, count(*) as orders
+from retail_sales
+group by customer_id
+order by orders desc
+limit 5;
 ```
 
-9. **Write a SQL query to find the number of unique customers who purchased items from each category.**:
+9. **Which gender had more transactions and which gender had higher total sales overall and profit**:
 ```sql
-SELECT 
-    category,    
-    COUNT(DISTINCT customer_id) as cnt_unique_cs
-FROM retail_sales
-GROUP BY category
+select gender, count(*) as orders
+from retail_sales
+group by gender
+order by orders;
+
+select gender, avg(age) avg_age, sum(total_sale) t_s, sum(profit) t_p
+from retail_sales_profit_included
+group by gender;
 ```
 
 10. **Write a SQL query to create each shift and number of orders (Example Morning <12, Afternoon Between 12 & 17, Evening >17)**:
 ```sql
-WITH hourly_sale
-AS
-(
-SELECT *,
-    CASE
-        WHEN EXTRACT(HOUR FROM sale_time) < 12 THEN 'Morning'
-        WHEN EXTRACT(HOUR FROM sale_time) BETWEEN 12 AND 17 THEN 'Afternoon'
-        ELSE 'Evening'
-    END as shift
-FROM retail_sales
-)
-SELECT 
-    shift,
-    COUNT(*) as total_orders    
-FROM hourly_sale
-GROUP BY shift
+-- To see which timeframes had most sales and profit for strategic marketing times.
+select shift, sum(total_sale) as t_s, sum(profit) as p
+from (select *, 
+case 
+when extract(hour from sale_time) < 12 then 'Morning'
+when extract(hour from sale_time) between 12 and 17 then 'Afternoon'
+when extract(hour from sale_time) > 17 then 'Evening'
+end as shift
+from retail_sales_profit_included) time
+group by shift;
+
+-- Evening time had most sales and profit, perhaps because evening time people have more time to 
+-- buy rather than other times which they may work.
 ```
 
 ## Findings
 
-- **Customer Demographics**: The dataset includes customers from various age groups, with sales distributed across different categories such as Clothing and Beauty.
+- **Customer Demographics**: The dataset includes customers from various age groups, with sales distributed across different categories such as Clothing, Electronics and Beauty.
 - **High-Value Transactions**: Several transactions had a total sale amount greater than 1000, indicating premium purchases.
-- **Sales Trends**: Monthly analysis shows variations in sales, helping identify peak seasons.
-- **Customer Insights**: The analysis identifies the top-spending customers and the most popular product categories.
+- **Sales Trends**: Seeing that Q4 had highest orders and total_sales and profit
+- **Customer Insights**: The analysis identifies the high-ordering customers and the most popular product categories.
 
 ## Reports
 
-- **Sales Summary**: A detailed report summarizing total sales, customer demographics, and category performance.
-- **Trend Analysis**: Insights into sales trends across different months and shifts.
-- **Customer Insights**: Reports on top customers and unique customer counts per category.
+- **Marketing and Maximizing Profit**: By identifying customers who place high total orders and are likely to order again, analyzing which dates generated the highest sales, profit, and order volumes for promotional planning, understanding which times of day (morning, afternoon, or evening) see the most ordering activity, and determining which product categories generate the highest total sales and profit, businesses can make targeted, data-driven marketing and profitability decisions.
+- **Minimizing Costs and Increasing Profitability**: By identifying non-profitable transactions at the category level, businesses can evaluate pricing strategies—such as adjusting the price per unit—to help reduce losses and improve overall profitability.
 
 ## Conclusion
 
-This project serves as a comprehensive introduction to SQL for data analysts, covering database setup, data cleaning, exploratory data analysis, and business-driven SQL queries. The findings from this project can help drive business decisions by understanding sales patterns, customer behavior, and product performance.
-
-## How to Use
-
-1. **Clone the Repository**: Clone this project repository from GitHub.
-2. **Set Up the Database**: Run the SQL scripts provided in the `database_setup.sql` file to create and populate the database.
-3. **Run the Queries**: Use the SQL queries provided in the `analysis_queries.sql` file to perform your analysis.
-4. **Explore and Modify**: Feel free to modify the queries to explore different aspects of the dataset or answer additional business questions.
-
-## Author - Zero Analyst
-
-This project is part of my portfolio, showcasing the SQL skills essential for data analyst roles. If you have any questions, feedback, or would like to collaborate, feel free to get in touch!
-
-### Stay Updated and Join the Community
-
-For more content on SQL, data analysis, and other data-related topics, make sure to follow me on social media and join our community:
-
-- **YouTube**: [Subscribe to my channel for tutorials and insights](https://www.youtube.com/@zero_analyst)
-- **Instagram**: [Follow me for daily tips and updates](https://www.instagram.com/zero_analyst/)
-- **LinkedIn**: [Connect with me professionally](https://www.linkedin.com/in/najirr)
-- **Discord**: [Join our community to learn and grow together](https://discord.gg/36h5f2Z5PK)
-
-Thank you for your support, and I look forward to connecting with you!
+Overall, this project helped strengthen SQL skills through hands-on practice in basic data cleaning, exploratory data analysis, and generating meaningful insights from retail sales data to support data-driven business decision-making.
